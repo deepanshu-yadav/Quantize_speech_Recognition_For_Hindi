@@ -1,0 +1,7 @@
+onnxsim
+onnxconverter-common
+onnxruntime
+sentencepiece
+soundfile
+librosa
+numpy==1.26
