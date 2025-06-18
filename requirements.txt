@@ -4,4 +4,5 @@ onnxruntime
 sentencepiece
 soundfile
 librosa
+sounddevice
 numpy==1.26

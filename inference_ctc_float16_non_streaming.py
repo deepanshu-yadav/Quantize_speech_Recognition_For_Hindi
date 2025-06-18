@@ -44,17 +44,8 @@ class StandaloneASR:
         sp.load(os.path.join(self.model_dir, "tokenizer_hi.model"))
         return sp
 
-    def preprocess_audio(self, wav_path: str) -> Tuple[np.ndarray, np.ndarray]:
-        """Preprocess WAV file to mel-spectrogram features compatible with the ONNX model."""
-        if not os.path.exists(wav_path):
-            raise FileNotFoundError(f"WAV file {wav_path} not found")
-
-        # Read audio
-        audio, sr = sf.read(wav_path)
-        if audio.ndim > 1:
-            audio = audio.mean(axis=1)  # Convert to mono
-        audio = audio.astype(np.float32)
-
+    def calculate_audio_features(self, audio: np.ndarray, sr: int) -> \
+        Tuple[np.ndarray, np.ndarray]:
         # Resample to 16kHz if needed
         if sr != 16000:
             audio = resample(audio, orig_sr=sr, target_sr=16000)
@@ -102,6 +93,18 @@ class StandaloneASR:
             raise ValueError(f"Expected audio features shape {expected_shape}, got {audio_features.shape}")
 
         return audio_features, audio_length
+    
+    def preprocess_audio(self, wav_path: str) -> Tuple[np.ndarray, np.ndarray]:
+        """Preprocess WAV file to mel-spectrogram features compatible with the ONNX model."""
+        if not os.path.exists(wav_path):
+            raise FileNotFoundError(f"WAV file {wav_path} not found")
+
+        # Read audio
+        audio, sr = sf.read(wav_path)
+        if audio.ndim > 1:
+            audio = audio.mean(axis=1)  # Convert to mono
+        audio = audio.astype(np.float32)
+        return self.calculate_audio_features(audio, sr)
 
     def run_inference(self, audio_features: np.ndarray, audio_length: np.ndarray) -> np.ndarray:
         """Run ONNX inference."""
@@ -169,8 +172,6 @@ class StandaloneASR:
         except Exception as e:
             raise RuntimeError(f"Decoding failed: {str(e)}")
 
-        return text
-
     def transcribe(self, wav_path: str) -> str:
         """Full transcription pipeline."""
         try:
@@ -187,16 +188,3 @@ class StandaloneASR:
             return text
         except Exception as e:
             raise RuntimeError(f"Transcription failed: {str(e)}")
-
-# Example usage
-if __name__ == "__main__":
-    try:
-        # Initialize the ASR system
-        asr = StandaloneASR(model_dir=os.getcwd())
-
-        # Transcribe a WAV file
-        wav_path = "file.wav"
-        result = asr.transcribe(wav_path)
-        print(f"Transcription: {result}")
-    except Exception as e:
-        print(f"Error: {str(e)}")
