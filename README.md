@@ -7,6 +7,8 @@ This repository aims to
 2. remove nemo specific dependencies
 3. finally use the converted onnx model for both offline and online(microphone) use.
 
+The hugging face link for this repository is 
+https://huggingface.co/pronoobie/indic_conformer_hi_float16_onnx_256_vocab
 
 ---
 Converted for both CTC  and RNNT versions.
