@@ -3,20 +3,19 @@ Visit: https://huggingface.co/ai4bharat/indicconformer_stt_hi_hybrid_ctc_rnnt_la
 
 
 This repository aims to 
-1. quantize the .nemo model.
+1. quantize the .nemo model for both CTC and RNNT versions.
 2. remove nemo specific dependencies
-3. finally use the converted onnx model. 
+3. finally use the converted onnx model for both offline and online(microphone) use.
 
 
 ---
+Converted for both CTC  and RNNT versions.
 
-Note : We have only used the CTC version for this model. 
-If you want to use RNNT version then you make trivial changes in the `onnxconversion.ipynb`
-notebook.
 ---
 
-There is a notebook already provided for conversion to float 16 model. 
-The name of the notebook is `onnxconversion.ipynb`
+There is a notebook already provided for conversion to float 16 model.  
+The name of the notebook is `onnxconversionCTC.ipynb` for CTC.
+The name of the notebook is `onnxconversionRNNT.ipynb` for RNNT version.
 
 
 # How to perform inference 
@@ -75,5 +74,14 @@ Transcription: आपसे मिल के अच्छा लगा
 Listening...
 ```
 
-## For RNNT  (Stay tuned... )
+## For RNNT  
 
+### For Realtime (microphone) 
+It is float 16 rnnt version with non streaming mode. 
+
+`python realtime_rnnt_float16_non_streaming.py`
+
+### Offline file based
+It is float 16 rnnt version with non streaming mode. 
+
+`python offline_rnnt_float16_non_streaming.py`
