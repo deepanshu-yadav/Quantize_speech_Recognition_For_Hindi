@@ -11,7 +11,7 @@ from librosa import resample
 from typing import Tuple
 import sentencepiece as spm
 
-class StandaloneASR:
+class StandaloneASRCTC:
     def __init__(self, model_dir: str = "model_components"):
         """Initialize the ASR system from saved components."""
         self.model_dir = model_dir
@@ -182,7 +182,7 @@ class StandaloneASR:
         return self.transcribe(audio, sr)
         
     
-    def transcribe(self, audio: np.ndarray, sr: int) -> str:
+    def transcribe(self, audio: np.ndarray, sr: int=16000) -> str:
         """Full transcription pipeline."""
         try:
             # 1. Preprocess audio

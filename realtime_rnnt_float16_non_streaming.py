@@ -2,17 +2,18 @@ import torch
 import os
 import sounddevice as sd
 import numpy as np
-from queue import Queue
+from queue import Queue, Empty
 import threading
 import sys
+import signal
 
 # Assume your StandaloneASR class is defined in asr_module.py
 # from asr_module import StandaloneASR 
-from inference_rnnt_float16_non_streaming import StandaloneASR
+from inference_rnnt_float16_non_streaming import StandaloneASRRNNT
 
 
 class StreamingASR:
-    def __init__(self, asr_model: StandaloneASR, sample_rate=16000, chunk_size=512, silence_threshold=0.5):
+    def __init__(self, asr_model: StandaloneASRRNNT, sample_rate=16000, chunk_size=512, silence_threshold=0.5):
         self.asr_model = asr_model
         self.sample_rate = sample_rate
         self.chunk_size = chunk_size
@@ -29,12 +30,14 @@ class StreamingASR:
 
         self.audio_queue = Queue()
         self.is_running = False
+        self.stop_event = threading.Event()
 
     def _audio_callback(self, indata, frames, time, status):
         """This is called by sounddevice for each new audio chunk."""
         if status:
             print(status)
-        self.audio_queue.put(bytes(indata))
+        if self.is_running:
+            self.audio_queue.put(bytes(indata))
 
     def _process_audio(self):
         """Main processing loop for VAD and ASR."""
@@ -45,10 +48,10 @@ class StreamingASR:
 
         print("Listening... (Speak into the microphone)")
 
-        while self.is_running:
+        while self.is_running and not self.stop_event.is_set():
             try:
-                # Get audio chunk from the queue
-                audio_chunk_bytes = self.audio_queue.get()
+                # Get audio chunk from the queue with timeout
+                audio_chunk_bytes = self.audio_queue.get(timeout=0.1)
                 audio_float32 = np.frombuffer(audio_chunk_bytes, dtype=np.float32)
                 
                 # Convert to torch tensor for VAD
@@ -74,27 +77,20 @@ class StreamingASR:
                             full_utterance = np.concatenate(audio_buffer)
                             audio_buffer = []
 
-                            # --- Re-use your existing logic ---
-                            # Your ASR model expects features, not raw audio.
-                            # So we adapt your preprocess_audio function slightly.
-                            
-                            # 1. Preprocess audio
-                            # We can't use the file-based preprocess_audio directly,
-                            # but we can reuse its core logic.
                             try:
                                 text = self.asr_model.transcribe(full_utterance)
-                                
                                 print(f"Transcription: {text}\nListening...")
                             except Exception as e:
                                 print(f"Error during transcription: {e}")
 
-            except self.audio_queue.Empty:
+            except Empty:
                 continue
 
     def start(self):
         """Starts the audio stream and processing thread."""
         self.is_running = True
-        self.thread = threading.Thread(target=self._process_audio)
+        self.stop_event.clear()
+        self.thread = threading.Thread(target=self._process_audio, daemon=True)
         
         self.stream = sd.InputStream(
             callback=self._audio_callback,
@@ -109,32 +105,44 @@ class StreamingASR:
     def stop(self):
         """Stops the audio stream and processing thread."""
         self.is_running = False
-        self.stream.stop()
-        self.stream.close()
-        self.thread.join()
+        self.stop_event.set()
+        if hasattr(self, 'stream'):
+            self.stream.stop()
+            self.stream.close()
+        if hasattr(self, 'thread'):
+            self.thread.join(timeout=1)
         print("Streaming stopped.")
 
 
 # --- Example Usage ---
 if __name__ == "__main__":
+    def signal_handler(sig, frame):
+        print("\nReceived interrupt, stopping...")
+        streaming_asr.stop()
+        sys.exit(0)
+
     try:
         # 1. Initialize your original ASR model
-        asr_system = StandaloneASR(model_dir=os.getcwd())
+        asr_system = StandaloneASRRNNT(model_dir=os.getcwd())
 
         # 2. Initialize and start the streaming wrapper
         streaming_asr = StreamingASR(asr_system)
         streaming_asr.start()
-        print("Press 'q' to stop streaming...")
+        
+        # Set up signal handler for Ctrl+C
+        signal.signal(signal.SIGINT, signal_handler)
+        
+        print("Press 'q' then Enter to stop streaming...")
         # Keep the main thread alive
-        while True:
+        while streaming_asr.is_running:
             key = input()
             if key.lower() == 'q':
                 streaming_asr.stop()
-                sys.exit(1)
+                break
     
     except Exception as e:
         print(f"Error: {str(e)}")
     finally:
-        if 'streaming_asr' in locals() and streaming_asr.is_running:
+        if 'streaming_asr' in locals():
             streaming_asr.stop()
-            sys.exit(1)
+        sys.exit(0)

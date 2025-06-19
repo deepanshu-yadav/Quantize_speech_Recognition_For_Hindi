@@ -1,6 +1,6 @@
-from inference_rnnt_float16_non_streaming import StandaloneASR
+from inference_rnnt_float16_non_streaming import StandaloneASRRNNT
 import os
 
-asr = StandaloneASR(model_dir=os.getcwd())
+asr = StandaloneASRRNNT(model_dir=os.getcwd())
 transcripts = asr.transcribe_file("file.wav")
 print(transcripts)

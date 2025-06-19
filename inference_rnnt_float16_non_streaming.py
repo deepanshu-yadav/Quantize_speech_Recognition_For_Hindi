@@ -9,7 +9,7 @@ import torchaudio.transforms as T
 from librosa import resample
 from typing import Tuple
 
-class StandaloneASR:
+class StandaloneASRRNNT:
     def __init__(self, model_dir: str = "model_components"):
         """Initialize the transducer-based ASR system."""
         self.model_dir = model_dir
