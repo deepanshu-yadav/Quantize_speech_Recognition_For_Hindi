@@ -94,8 +94,8 @@ class StandaloneASR:
 
         return audio_features, audio_length
     
-    def preprocess_audio(self, wav_path: str) -> Tuple[np.ndarray, np.ndarray]:
-        """Preprocess WAV file to mel-spectrogram features compatible with the ONNX model."""
+    def preprocess_audio_file(self, wav_path: str) -> Tuple[np.ndarray, np.ndarray]:
+        """Preprocess WAV file to its numppy array."""
         if not os.path.exists(wav_path):
             raise FileNotFoundError(f"WAV file {wav_path} not found")
 
@@ -104,7 +104,7 @@ class StandaloneASR:
         if audio.ndim > 1:
             audio = audio.mean(axis=1)  # Convert to mono
         audio = audio.astype(np.float32)
-        return self.calculate_audio_features(audio, sr)
+        return audio, sr
 
     def run_inference(self, audio_features: np.ndarray, audio_length: np.ndarray) -> np.ndarray:
         """Run ONNX inference."""
@@ -171,12 +171,22 @@ class StandaloneASR:
            
         except Exception as e:
             raise RuntimeError(f"Decoding failed: {str(e)}")
-
-    def transcribe(self, wav_path: str) -> str:
+    
+    def transcribe_file(self, wav_path: str) -> str:
+        """Transcribe a single WAV file."""
+        if not os.path.exists(wav_path):
+            raise FileNotFoundError(f"WAV file {wav_path} not found")
+        
+        # Preprocess audio and run transcription
+        audio, sr = self.preprocess_audio_file(wav_path)
+        return self.transcribe(audio, sr)
+        
+    
+    def transcribe(self, audio: np.ndarray, sr: int) -> str:
         """Full transcription pipeline."""
         try:
             # 1. Preprocess audio
-            audio_features, audio_length = self.preprocess_audio(wav_path)
+            audio_features, audio_length = self.calculate_audio_features(audio, sr)
             print(f"Audio features shape: {audio_features.shape}, Length: {audio_length}")
 
             # 2. Run inference

@@ -74,22 +74,9 @@ class StreamingASR:
                             full_utterance = np.concatenate(audio_buffer)
                             audio_buffer = []
 
-                            # --- Re-use your existing logic ---
-                            # Your ASR model expects features, not raw audio.
-                            # So we adapt your preprocess_audio function slightly.
-                            
-                            # 1. Preprocess audio
-                            # We can't use the file-based preprocess_audio directly,
-                            # but we can reuse its core logic.
+                            # Transcribe the full utterance
                             try:
-                                features, length = self.asr_model.calculate_audio_features(full_utterance, 
-                                                                                           self.sample_rate)
-                                
-                                # 2. Run inference
-                                logits = self.asr_model.run_inference(features, length)
-                                
-                                # 3. Decode output
-                                text = self.asr_model.decode_output(logits)
+                                text = self.asr_model.transcribe(full_utterance, self.sample_rate)
                                 
                                 print(f"Transcription: {text}\nListening...")
                             except Exception as e:
@@ -112,6 +99,7 @@ class StreamingASR:
         )
         self.stream.start()
         self.thread.start()
+        self.thread.join()
 
     def stop(self):
         """Stops the audio stream and processing thread."""
